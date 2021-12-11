@@ -14,7 +14,7 @@ CURSOR          EQU     FFFCh
 CURSOR_INIT     EQU     FFFFh
 
 ;------------------------------------------------------------------------------
-; Screen boundries (P3 Simulator defined)
+; Screen boundaries (P3 Simulator defined)
 ;------------------------------------------------------------------------------
 SCREEN_C_MIN    EQU     0d
 SCREEN_C_MAX    EQU     80d
