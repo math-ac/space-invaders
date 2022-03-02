@@ -14,5 +14,4 @@ run:
 	$(RUN) $(BIN)space_invaders.exe
 
 clean:
-	rm -f $(BIN)*.lis
-	rm -f $(BIN)*.exe
+	rm -f $(BIN)*.lis $(BIN)*.exe
