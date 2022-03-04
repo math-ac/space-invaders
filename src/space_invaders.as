@@ -32,7 +32,7 @@ SCREEN_R_SHAPE  EQU     '-'
 ;------------------------------------------------------------------------------
 ; Player constants
 ;------------------------------------------------------------------------------
-PLAYER_C_I      EQU     39d ; Initial Column position at the start of the game
+PLAYER_C_I      EQU     39d ; Initial column position at the start of the game
 PLAYER_ROW      EQU     22d ; Constant row position for the player
 PLAYER_SIZE     EQU     5d
 PLAYER_SHAPE    EQU     '='
@@ -40,15 +40,15 @@ PLAYER_SHAPE    EQU     '='
 ;------------------------------------------------------------------------------
 ; Bullets constants
 ;------------------------------------------------------------------------------
-BULLET_C_I      EQU     39d ; Constant row column for the bullet shoot
-BULLET_ROW_I    EQU     21d ; Constant row position for the bullet shoot
+BULLET_C_I      EQU     39d ; Initial column position for the bullet shoot
+BULLET_ROW_I    EQU     21d ; Initial row position for the bullet shoot
 BULLET_SHAPE    EQU     'M'
 
 ;------------------------------------------------------------------------------
 ; Enemies constants
 ;------------------------------------------------------------------------------
-ENEMY1_C_I      EQU     2d ; Constant row column for the bullet shoot
-ENEMY1_ROW_I    EQU     2d ; Constant row position for the bullet shoot
+ENEMY1_C_I      EQU     1d ; Initial column position for the enemy
+ENEMY1_ROW_I    EQU     20d ; Initial row position for the enemy
 ENEMY1_SHAPE    EQU     'V'
 ENEMY_TIME      EQU     20d ; Cycles for the next enemy movement
 
@@ -338,7 +338,7 @@ EndDScore:      INC     R2
                 SHL     R4, 8d
                 OR      R4, R2
                 MOV     M[CURSOR], R4
-                MOV     R5, M[ScorePoints] ;TODO
+                MOV     R5, M[ScorePoints] ;TODO not printing actual value right
                 MOV     M[IO_WRITE], R5
 
                 POP     R5
@@ -349,62 +349,37 @@ EndDScore:      INC     R2
                 RET
 
 ;------------------------------------------------------------------------------
-; Function to clean a line on the screen NOT USED YET
-;------------------------------------------------------------------------------
-CleanLine:      PUSH    R1
-                PUSH    R2
-                PUSH    R3
-                PUSH    R4
-
-                MOV     R2, 0d
-                MOV     R3, SPACE
-                MOV     R4, 1d
-
-CleanLoop:      MOV     R1, PLAYER_ROW
-                SHL     R1, 8d
-                OR      R1, R2
-                MOV     M[CURSOR], R1
-                MOV     M[IO_WRITE], R3
-                CMP     R4, 80d
-                JMP.Z   EndClean
-                INC     R2
-                INC     R4
-                JMP     CleanLoop
-
-EndClean:       POP     R4
-                POP     R3
-                POP     R2
-                POP     R1
-                RET
-
-;------------------------------------------------------------------------------
-; Function to print enemies TODO
+; Function to print enemies TODO print other enemies
 ;------------------------------------------------------------------------------
 DrawEnemies:    PUSH    R1
                 PUSH    R2
                 PUSH    R3
                 PUSH    R4
+                PUSH    R5
 
                 MOV     R1, M[Enemie1ColumnI]
                 MOV     R2, M[Enemie1RowI]
-                MOV     R3, M[RowEnemies1]
+                MOV     R3, RowEnemies1
 
-DEnemiesLoop:   SHL     R1, 8d
-                OR      R1, R2
-                MOV     M[CURSOR], R1
-                MOV     M[IO_WRITE], R3
-                INC     R3
-                CMP     R3, END_STRING
+DEnemiesLoop:   MOV     R4, R1
+                SHL     R4, 8d
+                OR      R4, R2
+                MOV     M[CURSOR], R4
+                MOV     R5, M[R3]
+                MOV     M[IO_WRITE], R5
+                MOV     R5, M[R3 + 1]
+                CMP     R5, END_STRING
                 JMP.Z   EndDEnemies
                 INC     R2
+                INC     R3
                 JMP     DEnemiesLoop
 
-EndDEnemies:    POP     R4
+EndDEnemies:    POP     R5
+                POP     R4
                 POP     R3
                 POP     R2
                 POP     R1
                 RET
-
 
 ;------------------------------------------------------------------------------
 ; Function to move enemies TODO
@@ -422,7 +397,6 @@ CleanSpace:     PUSH    R1
 
                 POP     R1
                 RET
-
 
 ;------------------------------------------------------------------------------
 ; Function to move the player to the left
@@ -496,7 +470,7 @@ Main:           ENI
                 CALL    DrawPlayer
                 CALL    DrawBoundaries
                 CALL    DrawScore
-                ;CALL    DrawEnemies
+                CALL    DrawEnemies
                 CALL    TimerOn
 
 Halt:           JMP     Halt
