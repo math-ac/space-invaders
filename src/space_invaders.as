@@ -148,7 +148,7 @@ Timer:          PUSH    R1
                 CMP     R1, OFF
                 JMP.Z   EndTimer
                 CALL    MoveBullet
-                CALL    DrawScore
+                CALL    DrawPoints
 
 EndTimer:       MOV     R1, M[ETimeUnits]
                 MOV     R2, ENEMY_TIME ; Enemies Time to move
@@ -176,23 +176,6 @@ TimerOn:        PUSH    R1
                 RET
 
 ;--------------------------------- String -------------------------------------
-
-;------------------------------------------------------------------------------
-; Function to convert points to ascii TODO
-;------------------------------------------------------------------------------
-PointsToAscii:  PUSH    R1
-                PUSH    R2
-                PUSH    R3
-
-                MOV     R1, M[Points]
-                MOV     R2, ASCII_BASE
-                ADD     R1, R2
-                MOV     M[IO_WRITE], R3
-
-                POP     R3
-                POP     R2
-                POP     R1
-                RET
 
 ;------------------------------------------------------------------------------
 ; Function to clean a single space on the screen,
@@ -322,20 +305,44 @@ EndDScore:      POP     R3
                 RET
 
 ;------------------------------------------------------------------------------
-; Function to draw points TODO
+; Function to draw points
 ;------------------------------------------------------------------------------
 DrawPoints:     PUSH    R1
                 PUSH    R2
                 PUSH    R3
+                PUSH    R4
+                PUSH    R5
 
                 MOV     R1, M[PointsRow]
                 MOV     R2, M[PointsColumn]
                 MOV     R3, M[Points]
+
+Digits:         MOV     R4, 10d
+                DIV     R3, R4
+                CMP     R3, R0
+                JMP.Z   PrePointLoop ; Single digit number
+                INC     R2 ; For each digit, increase column
+                JMP     Digits
+
+PrePointLoop:   MOV     R3, M[Points] ; Load actual point value again
+                JMP     PointLoop
+
+PointLoop:      MOV     R4, 10d
+                DIV     R3, R4
+                MOV     R5, ASCII_BASE
+                ADD     R5, R4 ; Add to rest
                 SHL     R1, 8d
                 OR      R1, R2
                 MOV     M[CURSOR], R1
-                MOV     M[IO_WRITE], R3
+                MOV     M[IO_WRITE], R5
+                CMP     R3, R0
+                JMP.Z   EndPoints
+                DEC     R2
+                MOV     R1, M[PointsRow] ; Maintain the row
+                JMP     PointLoop
 
+EndPoints:      POP     R5
+                POP     R4
                 POP     R3
                 POP     R2
                 POP     R1
