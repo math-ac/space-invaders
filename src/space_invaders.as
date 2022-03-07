@@ -63,7 +63,7 @@ ENEMY2_ROW_I    EQU     3d ; Initial row position for the enemy 2
 ENEMY3_C_I      EQU     21d ; Initial column position for the enemy 3
 ENEMY3_ROW_I    EQU     4d ; Initial row position for the enemy 3
 
-ENEMY_TIME      EQU     2d ; Cycles for the next enemy movement
+ENEMY_TIME      EQU     6d ; Cycles for the next enemy movement
 
 ENEMY_R_MOV     EQU     1d ; Flag for right movement
 ENEMY_L_MOV     EQU     2d ; Flag for left movement
@@ -132,6 +132,7 @@ Enemie3ColumnI  WORD    ENEMY3_C_I
 Enemie3RowI     WORD    ENEMY3_ROW_I
 
 EnemieMovement  WORD    ENEMY_R_MOV
+EnemyTime       WORD    ENEMY_TIME
 
 ;------------------------------------------------------------------------------
 ; Score variables
@@ -151,6 +152,13 @@ StringRow       WORD    1d
 StringColumn    WORD    1d
 StringToPrint   WORD    0d
 StringSize      WORD    0d ; Used to clean a string only
+
+;------------------------------------------------------------------------------
+; Death variables
+;------------------------------------------------------------------------------
+DeathRow        WORD    10d
+DeathColumn     WORD    27d
+DeathString     STR     'Maybe next time, who knows', END_STRING
 
 ;------------------------------------------------------------------------------
 ; Interruptions
@@ -186,12 +194,12 @@ Timer:          PUSH    R1
                 CALL    DrawLivesValue
 
 EndTimer:       MOV     R1, M[ETimeUnits]
-                MOV     R2, ENEMY_TIME ; Enemies Time to move
+                MOV     R2, M[EnemyTime] ; Enemies Time to move
                 DIV     R1, R2
                 CMP     R2, R0 ; Compare the division rest with 0
                 CALL.Z  MoveEnemies
-                ;CALL.Z  DrawEnemies
                 CALL    TimerOn
+                CALL    AreUDead
 
                 POP     R2
                 POP     R1
@@ -205,6 +213,19 @@ TimerOn:        PUSH    R1
                 MOV     R1, TIMER_INIT
                 MOV     M[TIMER_UNITS], R1
                 MOV     R1, ON
+                MOV     M[TIMER_ACTIVATE], R1
+
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to deactivate the timer
+;------------------------------------------------------------------------------
+TimerOff:       PUSH    R1
+
+                MOV     R1, R0
+                MOV     M[TIMER_UNITS], R1
+                MOV     R1, OFF
                 MOV     M[TIMER_ACTIVATE], R1
 
                 POP     R1
@@ -472,7 +493,6 @@ Shoot:          PUSH    R1
                 MOV     R1, ON
                 MOV     M[BulletStatus], R1
                 CALL    ShootPosition
-                ;INC     M[Points] ;TODO only for tests, can be removed
 
 EndShoot:       POP     R1
                 RTI
@@ -544,13 +564,14 @@ Collision:      PUSH    R1
                 PUSH    R3
                 PUSH    R4
                 PUSH    R5
+                PUSH    R6
 
                 MOV     R1, M[BulletRow]
                 MOV     R2, M[BulletColumn]
                 MOV     R3, M[Enemie1ColumnI]
                 MOV     R4, R0
                 MOV     R6, ENEMY_SIZE
-                DEC     R6 ; The cmp with actual enemy size bug the game =/
+                DEC     R6 ; The cmp with actual enemy size bugs the game =/
 
                 CMP     R1, M[Enemie1RowI]
                 JMP.Z   Collision1 ; Possible collision with row 1 of enemies
@@ -576,6 +597,9 @@ HadCollision1:  MOV     R5, RowEnemies1
                 JMP.Z   EndCollision ; It was just a space
                 MOV     M[R5], R1 ; Update the array, enemy destroyed
                 INC     M[Points]
+                DEC     M[EnemyTime]
+                CMP     M[EnemyTime], R0
+                CALL.Z  NoZeroTime ; Time for enemy cant be zero
                 MOV     R1, OFF
                 MOV     M[BulletStatus], R1
                 MOV     R1, BULLET_ROW_I
@@ -598,6 +622,9 @@ HadCollision2:  MOV     R5, RowEnemies2
                 JMP.Z   EndCollision ; It was just a space
                 MOV     M[R5], R1 ; Update the array, enemy destroyed
                 INC     M[Points]
+                DEC     M[EnemyTime]
+                CMP     M[EnemyTime], R0
+                CALL.Z  NoZeroTime ; Time for enemy cant be zero
                 MOV     R1, OFF
                 MOV     M[BulletStatus], R1
                 MOV     R1, BULLET_ROW_I
@@ -620,16 +647,31 @@ HadCollision3:  MOV     R5, RowEnemies3
                 JMP.Z   EndCollision ; It was just a space
                 MOV     M[R5], R1 ; Update the array, enemy destroyed
                 INC     M[Points]
+                DEC     M[EnemyTime]
+                CMP     M[EnemyTime], R0
+                CALL.Z  NoZeroTime ; Time for enemy cant be zero
                 MOV     R1, OFF
                 MOV     M[BulletStatus], R1
                 MOV     R1, BULLET_ROW_I
                 MOV     M[BulletRow], R1
                 JMP     EndCollision
 
-EndCollision:   POP     R5
+EndCollision:   POP     R6
+                POP     R5
                 POP     R4
                 POP     R3
                 POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to check time for enemy movement
+;------------------------------------------------------------------------------
+NoZeroTime:     PUSH    R1
+
+                MOV     R1, 1d
+                MOV     M[EnemyTime], R1
+
                 POP     R1
                 RET
 
@@ -710,6 +752,30 @@ MovePlayerR:    PUSH    R1
 EndMoveR:       POP     R2
                 POP     R1
                 RTI
+
+;------------------------------------------------------------------------------
+; Function to check if you lose >=(
+;------------------------------------------------------------------------------
+AreUDead:       PUSH    R1
+                PUSH    R2
+
+                MOV     R1, M[PlayerLives]
+                CMP     R1, R0
+                JMP.Z   YesUAre
+                JMP     EndDead
+
+YesUAre:        CALL    TimerOff
+                MOV     R1, M[DeathRow]
+                MOV     R2, M[DeathColumn]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R1, DeathString
+                MOV     M[StringToPrint], R1
+                CALL    PrintString
+
+EndDead:        POP     R2
+                POP     R1
+                RET
 
 ;--------------------------------- Enemies ------------------------------------
 
