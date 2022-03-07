@@ -34,7 +34,7 @@ SCREEN_R_SHAPE  EQU     '-'
 ; Player constants
 ;------------------------------------------------------------------------------
 PLAYER_C_I      EQU     39d ; Initial column position at the start of the game
-PLAYER_ROW      EQU     22d ; Constant row position for the player
+PLAYER_ROW      EQU     23d ; Constant row position for the player
 PLAYER_SIZE     EQU     5d
 PLAYER_SHAPE    EQU     '='
 PLAYER_LIVES    EQU     3d
@@ -48,7 +48,7 @@ LIVES_VALUE_R   EQU     0d
 ; Bullets constants
 ;------------------------------------------------------------------------------
 BULLET_C_I      EQU     39d ; Initial column position for the bullet shoot
-BULLET_ROW_I    EQU     21d ; Initial row position for the bullet shoot
+BULLET_ROW_I    EQU     22d ; Initial row position for the bullet shoot
 BULLET_SHAPE    EQU     'M'
 
 ;------------------------------------------------------------------------------
@@ -77,6 +77,8 @@ ENEMY_SIZE      EQU     9d ; Size of a row of enemies
 POINTS_I        EQU     0d ; Initial score
 POINTS_C_I      EQU     7d
 POINTS_ROW_I    EQU     0d
+
+MAX_POINTS      EQU     15d
 
 SCORE_C_I       EQU     0d
 SCORE_ROW_I     EQU     0d
@@ -157,8 +159,15 @@ StringSize      WORD    0d ; Used to clean a string only
 ; Death variables
 ;------------------------------------------------------------------------------
 DeathRow        WORD    10d
-DeathColumn     WORD    27d
-DeathString     STR     'Maybe next time, who knows', END_STRING
+DeathColumn     WORD    19d
+DeathString     STR     'U lose i guess, maybe next time, who knows', END_STRING
+
+;------------------------------------------------------------------------------
+; Win variables
+;------------------------------------------------------------------------------
+WinRow          WORD    10d
+WinColumn       WORD    29d
+WinString       STR     'You win, nice =)', END_STRING
 
 ;------------------------------------------------------------------------------
 ; Interruptions
@@ -192,6 +201,7 @@ Timer:          PUSH    R1
                 CALL    MoveBullet
                 CALL    DrawPoints
                 CALL    DrawLivesValue
+                CALL    LoseLive
 
 EndTimer:       MOV     R1, M[ETimeUnits]
                 MOV     R2, M[EnemyTime] ; Enemies Time to move
@@ -200,6 +210,7 @@ EndTimer:       MOV     R1, M[ETimeUnits]
                 CALL.Z  MoveEnemies
                 CALL    TimerOn
                 CALL    AreUDead
+                CALL    DidUWin
 
                 POP     R2
                 POP     R1
@@ -557,7 +568,7 @@ MBulletEnd:     CALL    Collision
                 RET
 
 ;------------------------------------------------------------------------------
-; Function to check collision with enemies
+; Function to check bullet collision with enemies
 ;------------------------------------------------------------------------------
 Collision:      PUSH    R1
                 PUSH    R2
@@ -774,6 +785,87 @@ YesUAre:        CALL    TimerOff
                 CALL    PrintString
 
 EndDead:        POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to make you lose lives
+;------------------------------------------------------------------------------
+LoseLive:       PUSH    R1
+                PUSH    R2
+
+                MOV     R1, M[Enemie3RowI]
+                CMP     R1, PLAYER_ROW
+                JMP.Z   LoseOne
+                JMP     EndLose
+
+LoseOne:        MOV     R1, M[Enemie1RowI]
+                MOV     R2, M[Enemie1ColumnI]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, ENEMY_SIZE
+                MOV     M[StringSize], R3
+                CALL    CleanString
+
+                MOV     R1, M[Enemie2RowI]
+                MOV     R2, M[Enemie2ColumnI]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, ENEMY_SIZE
+                MOV     M[StringSize], R3
+                CALL    CleanString
+
+                MOV     R1, M[Enemie3RowI]
+                MOV     R2, M[Enemie3ColumnI]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, ENEMY_SIZE
+                MOV     M[StringSize], R3
+                CALL    CleanString
+
+                MOV     R1, ENEMY1_C_I
+                MOV     R2, ENEMY1_ROW_I
+                MOV     M[Enemie1ColumnI], R1
+                MOV     M[Enemie1RowI], R2
+                MOV     R1, ENEMY2_C_I
+                MOV     R2, ENEMY2_ROW_I
+                MOV     M[Enemie2ColumnI], R1
+                MOV     M[Enemie2RowI], R2
+                MOV     R1, ENEMY3_C_I
+                MOV     R2, ENEMY3_ROW_I
+                MOV     M[Enemie3ColumnI], R1
+                MOV     M[Enemie3RowI], R2
+
+                DEC     M[PlayerLives]
+                MOV     R1, ENEMY_TIME
+                MOV     M[EnemyTime], R1
+                JMP     EndLose
+
+EndLose:        POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to make you win
+;------------------------------------------------------------------------------
+DidUWin:        PUSH    R1
+                PUSH    R2
+
+                MOV     R1, M[Points]
+                CMP     R1, MAX_POINTS
+                JMP.Z   YouWin
+                JMP     EndWin
+
+YouWin:         CALL    TimerOff
+                MOV     R1, M[WinRow]
+                MOV     R2, M[WinColumn]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R1, WinString
+                MOV     M[StringToPrint], R1
+                CALL    PrintString
+
+EndWin:         POP     R2
                 POP     R1
                 RET
 
