@@ -55,15 +55,15 @@ BULLET_SHAPE    EQU     'M'
 ; Enemies constants
 ;------------------------------------------------------------------------------
 ENEMY1_C_I      EQU     21d ; Initial column position for the enemy 1
-ENEMY1_ROW_I    EQU     2d ; Initial row position for the enemy 1
+ENEMY1_ROW_I    EQU     2d ; Initial row position for the enemy 1 ; USe 2
 
 ENEMY2_C_I      EQU     21d ; Initial column position for the enemy 2
-ENEMY2_ROW_I    EQU     3d ; Initial row position for the enemy 2
+ENEMY2_ROW_I    EQU     3d ; Initial row position for the enemy 2 ; USE 3
 
 ENEMY3_C_I      EQU     21d ; Initial column position for the enemy 3
-ENEMY3_ROW_I    EQU     4d ; Initial row position for the enemy 3
+ENEMY3_ROW_I    EQU     4d ; Initial row position for the enemy 3 ; USE 4
 
-ENEMY_TIME      EQU     6d ; Cycles for the next enemy movement
+ENEMY_TIME      EQU     10d ; Cycles for the next enemy movement
 
 ENEMY_R_MOV     EQU     1d ; Flag for right movement
 ENEMY_L_MOV     EQU     2d ; Flag for left movement
@@ -159,8 +159,8 @@ StringSize      WORD    0d ; Used to clean a string only
 ; Death variables
 ;------------------------------------------------------------------------------
 DeathRow        WORD    10d
-DeathColumn     WORD    19d
-DeathString     STR     'U lose i guess, maybe next time, who knows', END_STRING
+DeathColumn     WORD    22d
+DeathString     STR     'You suck at this game', END_STRING
 
 ;------------------------------------------------------------------------------
 ; Win variables
@@ -199,9 +199,6 @@ Timer:          PUSH    R1
                 CMP     R1, OFF
                 JMP.Z   EndTimer
                 CALL    MoveBullet
-                CALL    DrawPoints
-                CALL    DrawLivesValue
-                CALL    LoseLive
 
 EndTimer:       MOV     R1, M[ETimeUnits]
                 MOV     R2, M[EnemyTime] ; Enemies Time to move
@@ -211,6 +208,9 @@ EndTimer:       MOV     R1, M[ETimeUnits]
                 CALL    TimerOn
                 CALL    AreUDead
                 CALL    DidUWin
+                CALL    DrawPoints
+                CALL    DrawLivesValue
+                CALL    LoseLive
 
                 POP     R2
                 POP     R1
@@ -793,6 +793,7 @@ EndDead:        POP     R2
 ;------------------------------------------------------------------------------
 LoseLive:       PUSH    R1
                 PUSH    R2
+                PUSH    R3
 
                 MOV     R1, M[Enemie3RowI]
                 CMP     R1, PLAYER_ROW
@@ -841,7 +842,8 @@ LoseOne:        MOV     R1, M[Enemie1RowI]
                 MOV     M[EnemyTime], R1
                 JMP     EndLose
 
-EndLose:        POP     R2
+EndLose:        POP     R3
+                POP     R2
                 POP     R1
                 RET
 
@@ -1024,7 +1026,6 @@ EndMovEnemies:  POP     R3
 ; Function to check enemies boundaries for movement
 ;------------------------------------------------------------------------------
 EnemyLimit:     PUSH    R1
-                PUSH    R2
 
                 MOV     R1, M[EnemieMovement]
                 CMP     R1, ENEMY_R_MOV
@@ -1066,8 +1067,7 @@ NewDirDL:       MOV     R1, ENEMY_R_MOV
                 MOV     M[EnemieMovement], R1 ; Move right next
                 JMP     EndELimit
 
-EndELimit:      POP     R2
-                POP     R1
+EndELimit:      POP     R1
                 RET
 
 ;-------------------------------- Main ----------------------------------------
