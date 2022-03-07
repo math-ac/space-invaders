@@ -37,6 +37,12 @@ PLAYER_C_I      EQU     39d ; Initial column position at the start of the game
 PLAYER_ROW      EQU     22d ; Constant row position for the player
 PLAYER_SIZE     EQU     5d
 PLAYER_SHAPE    EQU     '='
+PLAYER_LIVES    EQU     3d
+
+LIVES_C_I       EQU     70d
+LIVES_ROW_I     EQU     0d
+LIVES_VALUE_C   EQU     77d
+LIVES_VALUE_R   EQU     0d
 
 ;------------------------------------------------------------------------------
 ; Bullets constants
@@ -95,6 +101,13 @@ ScreenRow       WORD    SCREEN_R_MIN
 ; Player variables
 ;------------------------------------------------------------------------------
 PlayerColumnI   WORD    PLAYER_C_I
+PlayerLives     WORD    PLAYER_LIVES
+
+LivesString     STR     'Lives:', END_STRING
+LivesCollumn    WORD    LIVES_C_I
+LivesRow        WORD    LIVES_ROW_I
+ValueLiveC      WORD    LIVES_VALUE_C
+ValueLiveR      WORD    LIVES_VALUE_R
 
 ;------------------------------------------------------------------------------
 ; Bullet variables
@@ -170,6 +183,7 @@ Timer:          PUSH    R1
                 JMP.Z   EndTimer
                 CALL    MoveBullet
                 CALL    DrawPoints
+                CALL    DrawLivesValue
 
 EndTimer:       MOV     R1, M[ETimeUnits]
                 MOV     R2, ENEMY_TIME ; Enemies Time to move
@@ -401,6 +415,50 @@ EndPoints:      POP     R5
                 POP     R1
                 RET
 
+;------------------------------------------------------------------------------
+; Function to draw lives
+;------------------------------------------------------------------------------
+DrawLives:      PUSH    R1
+                PUSH    R2
+                PUSH    R3
+
+                MOV     R1, M[LivesRow]
+                MOV     R2, M[LivesCollumn]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, LivesString
+                MOV     M[StringToPrint], R3
+                CALL    PrintString
+                CALL    DrawLivesValue
+                JMP     EndDScore
+
+EndDLives:      POP     R3
+                POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to draw lives value
+;------------------------------------------------------------------------------
+DrawLivesValue: PUSH    R1
+                PUSH    R2
+                PUSH    R3
+
+                MOV     R1, M[ValueLiveR]
+                MOV     R2, M[ValueLiveC]
+                MOV     R3, M[PlayerLives]
+                ADD     R3, ASCII_BASE
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                MOV     M[IO_WRITE], R3
+                JMP     EndLivesV
+
+EndLivesV:      POP     R3
+                POP     R2
+                POP     R1
+                RET
+
 ;-------------------------------- Shoot ---------------------------------------
 
 ;------------------------------------------------------------------------------
@@ -414,7 +472,7 @@ Shoot:          PUSH    R1
                 MOV     R1, ON
                 MOV     M[BulletStatus], R1
                 CALL    ShootPosition
-                INC     M[Points] ;TODO only for tests, can be removed
+                ;INC     M[Points] ;TODO only for tests, can be removed
 
 EndShoot:       POP     R1
                 RTI
@@ -430,7 +488,7 @@ ShootPosition:  PUSH    R1
                 MOV     R2, PLAYER_SIZE
                 MOV     R3, 2d
                 DIV     R2, R3
-                ADD     R1, R2
+                ADD     R1, R2 ; Middle of the ship
                 MOV     M[BulletColumn], R1
 
                 POP     R3
@@ -472,7 +530,96 @@ BScreen:        MOV     R1, OFF
                 MOV     M[BulletRow], R1
                 JMP     MBulletEnd
 
-MBulletEnd:     POP     R3
+MBulletEnd:     CALL    Collision
+                POP     R3
+                POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to check collision with enemies
+;------------------------------------------------------------------------------
+Collision:      PUSH    R1
+                PUSH    R2
+                PUSH    R3
+                PUSH    R4
+                PUSH    R5
+
+                MOV     R1, M[BulletRow]
+                MOV     R2, M[BulletColumn]
+                MOV     R3, M[Enemie1ColumnI]
+                MOV     R4, R0
+
+                CMP     R1, M[Enemie1RowI]
+                JMP.Z   Collision1 ; Possible collision with row 1 of enemies
+                CMP     R1, M[Enemie2RowI]
+                JMP.Z   Collision2 ; Possible collision with row 2 of enemies
+                CMP     R1, M[Enemie3RowI]
+                JMP.Z   Collision3 ; Possible collision with row 3 of enemies
+
+Collision1:     MOV     R5, R3
+                CMP     R5, R2
+                JMP.Z   HadCollision1 ; Collision confirmed with row 1
+                INC     R3
+                CMP     R4, ENEMY_SIZE
+                JMP.Z   EndCollision ; Collision didn't occur
+                INC     R4
+                JMP     Collision1
+
+HadCollision1:  MOV     R5, RowEnemies1
+                ADD     R5, R4 ; The actual position within the array of enemies
+                MOV     R1, SPACE
+                CMP     M[R5], R1
+                JMP.Z   EndCollision ; It was just a space
+                MOV     M[R5], R1 ; Update the array, enemy destroyed
+                INC     M[Points]
+                MOV     R1, OFF
+                MOV     M[BulletStatus], R1
+                JMP     EndCollision
+
+Collision2:     MOV     R5, R3
+                CMP     R5, R2
+                JMP.Z   HadCollision2 ; Collision confirmed with row 2
+                INC     R3
+                CMP     R4, ENEMY_SIZE
+                JMP.Z   EndCollision ; Collision didn't occur
+                INC     R4
+                JMP     Collision2
+
+HadCollision2:  MOV     R5, RowEnemies2
+                ADD     R5, R4 ; The actual position within the array of enemies
+                MOV     R1, SPACE
+                CMP     M[R5], R1
+                JMP.Z   EndCollision ; It was just a space
+                MOV     M[R5], R1 ; Update the array, enemy destroyed
+                INC     M[Points]
+                MOV     R1, OFF
+                MOV     M[BulletStatus], R1
+                JMP     EndCollision
+
+Collision3:     MOV     R5, R3
+                CMP     R5, R2
+                JMP.Z   HadCollision3 ; Collision confirmed with row 3
+                INC     R3
+                CMP     R4, ENEMY_SIZE
+                JMP.Z   EndCollision ; Collision didn't occur
+                INC     R4
+                JMP     Collision3
+
+HadCollision3:  MOV     R5, RowEnemies3
+                ADD     R5, R4 ; The actual position within the array of enemies
+                MOV     R1, SPACE
+                CMP     M[R5], R1
+                JMP.Z   EndCollision ; It was just a space
+                MOV     M[R5], R1 ; Update the array, enemy destroyed
+                INC     M[Points]
+                MOV     R1, OFF
+                MOV     M[BulletStatus], R1
+                JMP     EndCollision
+
+EndCollision:   POP     R5
+                POP     R4
+                POP     R3
                 POP     R2
                 POP     R1
                 RET
@@ -596,7 +743,7 @@ EndDEnemies:    POP     R3
                 RET
 
 ;------------------------------------------------------------------------------
-; Function to move enemies TODO
+; Function to move enemies
 ;------------------------------------------------------------------------------
 MoveEnemies:    PUSH     R1
                 PUSH     R2
@@ -772,7 +919,7 @@ Main:           ENI
                 CALL    DrawBoundaries
                 CALL    DrawScore
                 CALL    DrawEnemies
+                CALL    DrawLives
                 CALL    TimerOn
-
 
 Halt:           JMP     Halt
