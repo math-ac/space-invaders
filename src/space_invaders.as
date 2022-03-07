@@ -48,10 +48,22 @@ BULLET_SHAPE    EQU     'M'
 ;------------------------------------------------------------------------------
 ; Enemies constants
 ;------------------------------------------------------------------------------
-ENEMY1_C_I      EQU     21d ; Initial column position for the enemy
-ENEMY1_ROW_I    EQU     2d ; Initial row position for the enemy
-;ENEMY1_SHAPE    EQU     'V'
-ENEMY_TIME      EQU     20d ; Cycles for the next enemy movement
+ENEMY1_C_I      EQU     21d ; Initial column position for the enemy 1
+ENEMY1_ROW_I    EQU     2d ; Initial row position for the enemy 1
+
+ENEMY2_C_I      EQU     21d ; Initial column position for the enemy 2
+ENEMY2_ROW_I    EQU     3d ; Initial row position for the enemy 2
+
+ENEMY3_C_I      EQU     21d ; Initial column position for the enemy 3
+ENEMY3_ROW_I    EQU     4d ; Initial row position for the enemy 3
+
+ENEMY_TIME      EQU     2d ; Cycles for the next enemy movement
+
+ENEMY_R_MOV     EQU     1d ; Flag for right movement
+ENEMY_L_MOV     EQU     2d ; Flag for left movement
+ENEMY_D_MOV     EQU     3d ; Flag for down movement
+
+ENEMY_SIZE      EQU     9d ; Size of a row of enemies
 
 ;------------------------------------------------------------------------------
 ; Score constants
@@ -95,10 +107,18 @@ BulletStatus    WORD    OFF
 ; Enemies variables
 ;------------------------------------------------------------------------------
 RowEnemies1     STR     'V V V V V', END_STRING
+Enemie1ColumnI  WORD    ENEMY1_C_I
+Enemie1RowI     WORD    ENEMY1_ROW_I
+
 RowEnemies2     STR     'Y Y Y Y Y', END_STRING
+Enemie2ColumnI  WORD    ENEMY2_C_I
+Enemie2RowI     WORD    ENEMY2_ROW_I
+
 RowEnemies3     STR     'W W W W W', END_STRING
-Enemie1ColumnI  STR     ENEMY1_C_I
-Enemie1RowI     STR     ENEMY1_ROW_I
+Enemie3ColumnI  WORD    ENEMY3_C_I
+Enemie3RowI     WORD    ENEMY3_ROW_I
+
+EnemieMovement  WORD    ENEMY_R_MOV
 
 ;------------------------------------------------------------------------------
 ; Score variables
@@ -117,6 +137,7 @@ ScoreRow        WORD    SCORE_ROW_I
 StringRow       WORD    1d
 StringColumn    WORD    1d
 StringToPrint   WORD    0d
+StringSize      WORD    0d ; Used to clean a string only
 
 ;------------------------------------------------------------------------------
 ; Interruptions
@@ -154,8 +175,8 @@ EndTimer:       MOV     R1, M[ETimeUnits]
                 MOV     R2, ENEMY_TIME ; Enemies Time to move
                 DIV     R1, R2
                 CMP     R2, R0 ; Compare the division rest with 0
-                ;CALL.Z  MoveEnemies
-                CALL.Z  DrawEnemies
+                CALL.Z  MoveEnemies
+                ;CALL.Z  DrawEnemies
                 CALL    TimerOn
 
                 POP     R2
@@ -223,6 +244,37 @@ EndStrPrint:    POP     R5
                 RET
 
 ;------------------------------------------------------------------------------
+; Function to clean a string of given size
+;------------------------------------------------------------------------------
+CleanString:    PUSH    R1
+                PUSH    R2
+                PUSH    R3
+                PUSH    R4
+                PUSH    R5
+
+                MOV     R1, M[StringRow]
+                MOV     R2, M[StringColumn]
+                MOV     R3, R0
+
+CleanStrLoop:   MOV     R4, R1
+                SHL     R4, 8d
+                OR      R4, R2
+                MOV     M[CURSOR], R4
+                CALL    CleanSpace
+                CMP     R3, M[StringSize]
+                JMP.Z   EndStrPrint
+                INC     R2
+                INC     R3
+                JMP     CleanStrLoop
+
+EndStrClean:    POP     R5
+                POP     R4
+                POP     R3
+                POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
 ; Function to reset screen variables
 ;------------------------------------------------------------------------------
 ResetScreen:    PUSH    R1
@@ -245,7 +297,8 @@ DrawBoundaries: PUSH    R1
 
                 MOV     R1, M[ScreenRow]
                 MOV     R2, SCREEN_C_MIN
-                DEC     R2 ; So the border doesn't overlap with the ship
+                DEC     R2
+                DEC     R2
 
 BLeftLoop:      MOV     R4, R1
                 SHL     R4, 8d
@@ -261,7 +314,7 @@ BLeftLoop:      MOV     R4, R1
 
 BPreRight:      MOV     R1, M[ScreenRow]
                 MOV     R2, SCREEN_C_MAX
-                ;INC     R2
+                INC     R2
                 JMP     BRightLoop
 
 BRightLoop:     MOV     R4, R1
@@ -505,7 +558,7 @@ EndMoveR:       POP     R2
 ;--------------------------------- Enemies ------------------------------------
 
 ;------------------------------------------------------------------------------
-; Function to print enemies TODO print other enemies
+; Function to print enemies
 ;------------------------------------------------------------------------------
 DrawEnemies:    PUSH    R1
                 PUSH    R2
@@ -518,6 +571,23 @@ DrawEnemies:    PUSH    R1
                 MOV    R3, RowEnemies1
                 MOV    M[StringToPrint], R3
                 CALL   PrintString
+
+                MOV    R1, M[Enemie2RowI]
+                MOV    R2, M[Enemie2ColumnI]
+                MOV    M[StringRow], R1
+                MOV    M[StringColumn], R2
+                MOV    R3, RowEnemies2
+                MOV    M[StringToPrint], R3
+                CALL   PrintString
+
+                MOV    R1, M[Enemie3RowI]
+                MOV    R2, M[Enemie3ColumnI]
+                MOV    M[StringRow], R1
+                MOV    M[StringColumn], R2
+                MOV    R3, RowEnemies3
+                MOV    M[StringToPrint], R3
+                CALL   PrintString
+
                 JMP    EndDEnemies
 
 EndDEnemies:    POP     R3
@@ -528,8 +598,163 @@ EndDEnemies:    POP     R3
 ;------------------------------------------------------------------------------
 ; Function to move enemies TODO
 ;------------------------------------------------------------------------------
-MoveEnemies:    RET
+MoveEnemies:    PUSH     R1
+                PUSH     R2
+                PUSH     R3
 
+                CALL    EnemyLimit
+                MOV     R1, M[EnemieMovement]
+                CMP     R1, ENEMY_R_MOV
+                JMP.Z   MoveEnemiesR
+                CMP     R1, ENEMY_L_MOV
+                JMP.Z   MoveEnemiesL
+                CMP     R1, ENEMY_D_MOV
+                JMP.Z   MoveEnemiesD
+
+MoveEnemiesR:   MOV     R1, M[Enemie1RowI]
+                MOV     R2, M[Enemie1ColumnI]
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                CALL    CleanSpace ; Clean the last position
+
+                MOV     R1, M[Enemie2RowI]
+                MOV     R2, M[Enemie2ColumnI]
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                CALL    CleanSpace ; Clean the last position
+
+                MOV     R1, M[Enemie3RowI]
+                MOV     R2, M[Enemie3ColumnI]
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                CALL    CleanSpace ; Clean the last position
+
+                INC     M[Enemie1ColumnI]
+                INC     M[Enemie2ColumnI]
+                INC     M[Enemie3ColumnI]
+                CALL    DrawEnemies
+                JMP     EndMovEnemies
+
+MoveEnemiesL:   MOV     R1, M[Enemie1RowI]
+                MOV     R2, M[Enemie1ColumnI]
+                ADD     R2, ENEMY_SIZE
+                DEC     R2
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                CALL    CleanSpace ; Clean the last position
+
+                MOV     R1, M[Enemie2RowI]
+                MOV     R2, M[Enemie2ColumnI]
+                ADD     R2, ENEMY_SIZE
+                DEC     R2
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                CALL    CleanSpace ; Clean the last position
+
+                MOV     R1, M[Enemie3RowI]
+                MOV     R2, M[Enemie3ColumnI]
+                ADD     R2, ENEMY_SIZE
+                DEC     R2
+                SHL     R1, 8d
+                OR      R1, R2
+                MOV     M[CURSOR], R1
+                CALL    CleanSpace ; Clean the last position
+
+                DEC     M[Enemie1ColumnI]
+                DEC     M[Enemie2ColumnI]
+                DEC     M[Enemie3ColumnI]
+                CALL    DrawEnemies
+                JMP     EndMovEnemies
+
+MoveEnemiesD:   MOV     R1, M[Enemie1RowI]
+                MOV     R2, M[Enemie1ColumnI]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, ENEMY_SIZE
+                MOV     M[StringSize], R3
+                CALL    CleanString
+
+                MOV     R1, M[Enemie2RowI]
+                MOV     R2, M[Enemie2ColumnI]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, ENEMY_SIZE
+                MOV     M[StringSize], R3
+                CALL    CleanString
+
+                MOV     R1, M[Enemie3RowI]
+                MOV     R2, M[Enemie3ColumnI]
+                MOV     M[StringRow], R1
+                MOV     M[StringColumn], R2
+                MOV     R3, ENEMY_SIZE
+                MOV     M[StringSize], R3
+                CALL    CleanString
+
+                INC     M[Enemie1RowI]
+                INC     M[Enemie2RowI]
+                INC     M[Enemie3RowI]
+                CALL    DrawEnemies
+                JMP     EndMovEnemies
+
+EndMovEnemies:  POP     R3
+                POP     R2
+                POP     R1
+                RET
+
+;------------------------------------------------------------------------------
+; Function to check enemies boundaries for movement
+;------------------------------------------------------------------------------
+EnemyLimit:     PUSH    R1
+                PUSH    R2
+
+                MOV     R1, M[EnemieMovement]
+                CMP     R1, ENEMY_R_MOV
+                JMP.Z   EnemyLimitR
+                CMP     R1, ENEMY_L_MOV
+                JMP.Z   EnemyLimitL
+                CMP     R1, ENEMY_D_MOV
+                JMP.Z   EnemyLimitD
+
+EnemyLimitR:    MOV     R1, M[Enemie1ColumnI]
+                ADD     R1, ENEMY_SIZE
+                CMP     R1, SCREEN_C_MAX
+                JMP.Z   NewDirR ; Right limit reached
+                JMP     EndELimit
+
+NewDirR:        MOV     R1, ENEMY_D_MOV
+                MOV     M[EnemieMovement], R1 ; Move down next
+                JMP     EndELimit
+
+EnemyLimitL:    MOV     R1, M[Enemie1ColumnI]
+                CMP     R1, SCREEN_C_MIN
+                JMP.Z   NewDirL ; Left limit reached
+                JMP     EndELimit
+
+NewDirL:        MOV     R1, ENEMY_D_MOV
+                MOV     M[EnemieMovement], R1 ; Move down next
+                JMP     EndELimit
+
+EnemyLimitD:    MOV     R1, M[Enemie1ColumnI]
+                CMP     R1, SCREEN_C_MIN
+                JMP.Z   NewDirDL ; Previous movement was left
+                JMP     NewDirDR ; Previous movement was right
+
+NewDirDR:       MOV     R1, ENEMY_L_MOV
+                MOV     M[EnemieMovement], R1 ; Move left next
+                JMP     EndELimit
+
+NewDirDL:       MOV     R1, ENEMY_R_MOV
+                MOV     M[EnemieMovement], R1 ; Move right next
+                JMP     EndELimit
+
+EndELimit:      POP     R2
+                POP     R1
+                RET
 
 ;-------------------------------- Main ----------------------------------------
 
