@@ -549,6 +549,8 @@ Collision:      PUSH    R1
                 MOV     R2, M[BulletColumn]
                 MOV     R3, M[Enemie1ColumnI]
                 MOV     R4, R0
+                MOV     R6, ENEMY_SIZE
+                DEC     R6 ; The cmp with actual enemy size bug the game =/
 
                 CMP     R1, M[Enemie1RowI]
                 JMP.Z   Collision1 ; Possible collision with row 1 of enemies
@@ -556,12 +558,13 @@ Collision:      PUSH    R1
                 JMP.Z   Collision2 ; Possible collision with row 2 of enemies
                 CMP     R1, M[Enemie3RowI]
                 JMP.Z   Collision3 ; Possible collision with row 3 of enemies
+                JMP     EndCollision
 
 Collision1:     MOV     R5, R3
                 CMP     R5, R2
                 JMP.Z   HadCollision1 ; Collision confirmed with row 1
                 INC     R3
-                CMP     R4, ENEMY_SIZE
+                CMP     R4, R6
                 JMP.Z   EndCollision ; Collision didn't occur
                 INC     R4
                 JMP     Collision1
@@ -575,13 +578,15 @@ HadCollision1:  MOV     R5, RowEnemies1
                 INC     M[Points]
                 MOV     R1, OFF
                 MOV     M[BulletStatus], R1
+                MOV     R1, BULLET_ROW_I
+                MOV     M[BulletRow], R1
                 JMP     EndCollision
 
 Collision2:     MOV     R5, R3
                 CMP     R5, R2
                 JMP.Z   HadCollision2 ; Collision confirmed with row 2
                 INC     R3
-                CMP     R4, ENEMY_SIZE
+                CMP     R4, R6
                 JMP.Z   EndCollision ; Collision didn't occur
                 INC     R4
                 JMP     Collision2
@@ -595,13 +600,15 @@ HadCollision2:  MOV     R5, RowEnemies2
                 INC     M[Points]
                 MOV     R1, OFF
                 MOV     M[BulletStatus], R1
+                MOV     R1, BULLET_ROW_I
+                MOV     M[BulletRow], R1
                 JMP     EndCollision
 
 Collision3:     MOV     R5, R3
                 CMP     R5, R2
                 JMP.Z   HadCollision3 ; Collision confirmed with row 3
                 INC     R3
-                CMP     R4, ENEMY_SIZE
+                CMP     R4, R6
                 JMP.Z   EndCollision ; Collision didn't occur
                 INC     R4
                 JMP     Collision3
@@ -615,6 +622,8 @@ HadCollision3:  MOV     R5, RowEnemies3
                 INC     M[Points]
                 MOV     R1, OFF
                 MOV     M[BulletStatus], R1
+                MOV     R1, BULLET_ROW_I
+                MOV     M[BulletRow], R1
                 JMP     EndCollision
 
 EndCollision:   POP     R5
