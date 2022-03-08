@@ -55,7 +55,7 @@ BULLET_SHAPE    EQU     'M'
 ; Enemies constants
 ;------------------------------------------------------------------------------
 ENEMY1_C_I      EQU     21d ; Initial column position for the enemy 1
-ENEMY1_ROW_I    EQU     2d ; Initial row position for the enemy 1 ; USe 2
+ENEMY1_ROW_I    EQU     2d ; Initial row position for the enemy 1 ; USE 2
 
 ENEMY2_C_I      EQU     21d ; Initial column position for the enemy 2
 ENEMY2_ROW_I    EQU     3d ; Initial row position for the enemy 2 ; USE 3
@@ -307,7 +307,7 @@ CleanStrLoop:   MOV     R4, R1
                 MOV     M[CURSOR], R4
                 CALL    CleanSpace
                 CMP     R3, M[StringSize]
-                JMP.Z   EndStrPrint
+                JMP.Z   EndStrClean
                 INC     R2
                 INC     R3
                 JMP     CleanStrLoop
