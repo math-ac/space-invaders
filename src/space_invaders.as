@@ -296,7 +296,6 @@ CleanString:    PUSH    R1
                 PUSH    R2
                 PUSH    R3
                 PUSH    R4
-                PUSH    R5
 
                 MOV     R1, M[StringRow]
                 MOV     R2, M[StringColumn]
@@ -313,8 +312,7 @@ CleanStrLoop:   MOV     R4, R1
                 INC     R3
                 JMP     CleanStrLoop
 
-EndStrClean:    POP     R5
-                POP     R4
+EndStrClean:    POP     R4
                 POP     R3
                 POP     R2
                 POP     R1
